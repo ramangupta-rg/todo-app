@@ -97,16 +97,21 @@ pipeline {
     post {
         always {
             script {
-                if (isUnix()) {
-                    sh """
-                    docker rmi ${DOCKER_IMAGE} || true
-                    docker rmi ${DOCKER_REGISTRY}:latest || true
-                    """
-                } else {
-                    bat """
-                    docker rmi ${DOCKER_IMAGE} 2>nul || echo Image not found, skipping cleanup.
-                    docker rmi ${DOCKER_REGISTRY}:latest 2>nul || echo Image not found, skipping cleanup.
-                    """
+                try {
+                    if (isUnix()) {
+                        sh """
+                        docker rmi ${DOCKER_IMAGE} || true
+                        docker rmi ${DOCKER_REGISTRY}:latest || true
+                        """
+                    } else {
+                        bat """
+                        docker rmi ${DOCKER_IMAGE} 2>nul || echo Image not found, skipping cleanup.
+                        docker rmi ${DOCKER_REGISTRY}:latest 2>nul || echo Image not found, skipping cleanup.
+                        """
+                    }
+                } catch (Exception e) {
+                    echo "Error during cleanup: ${e.getMessage()}"
+                    currentBuild.result = 'SUCCESS'
                 }
             }
         }
