@@ -2,15 +2,14 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_IMAGE = 'todo-app'   // Docker image name
-        DOCKER_REGISTRY = 'ramangupta21/todo-app' // Replace with your Docker Hub username and image name
+        DOCKER_IMAGE = 'todo-app'
+        DOCKER_REGISTRY = 'ramangupta21/todo-app'
     }
 
     stages {
         stage('Build') {
             steps {
                 script {
-                    // Build the Docker image
                     dockerImage = docker.build(DOCKER_IMAGE)
                 }
             }
@@ -19,7 +18,6 @@ pipeline {
         stage('Test') {
             steps {
                 script {
-                    // Convert Windows path to Unix-style path if on Windows
                     def convertPathToUnix = { path ->
                         if (!isUnix()) {
                             def driveLetter = path.substring(0, 1).toLowerCase()
@@ -35,7 +33,6 @@ pipeline {
 
                     echo "Converted Unix Workspace Path: ${unixWorkspace}"
 
-                    // Run tests using Docker directly
                     if (isUnix()) {
                         sh """
                         docker run --rm -v ${unixWorkspace}:/app -w /app ${DOCKER_IMAGE} python -m unittest discover
@@ -52,7 +49,6 @@ pipeline {
         stage('Deploy') {
             steps {
                 script {
-                    // Stop and remove any existing container
                     if (isUnix()) {
                         sh "docker stop todo-app-deployment || true"
                         sh "docker rm todo-app-deployment || true"
@@ -61,12 +57,11 @@ pipeline {
                         bat "docker rm todo-app-deployment 2>nul || echo No existing container to remove."
                     }
 
-                    // Push the Docker image to Docker Hub
                     docker.withRegistry('', '13bee838-94fb-4248-a117-3e3f07f246cc') {
                         dockerImage.push("latest")
                     }
 
-                    // Deploy the Docker container
+                    echo "Running container..."
                     if (isUnix()) {
                         sh """
                         docker run -d -p 5000:5000 --name todo-app-deployment ${DOCKER_REGISTRY}:latest
@@ -77,11 +72,18 @@ pipeline {
                         """
                     }
 
-                    // Verify that the container is running
+                    echo "Checking if container is running..."
+                    def isRunning
                     if (isUnix()) {
-                        sh "docker ps | grep todo-app-deployment"
+                        isRunning = sh(returnStatus: true, script: "docker ps | grep todo-app-deployment")
                     } else {
-                        bat "docker ps | findstr todo-app-deployment"
+                        isRunning = bat(returnStatus: true, script: "docker ps | findstr todo-app-deployment")
+                    }
+
+                    if (isRunning != 0) {
+                        error "Deployment failed: The Docker container did not start."
+                    } else {
+                        echo "Deployment successful: The Docker container is running."
                     }
                 }
             }
@@ -91,7 +93,6 @@ pipeline {
     post {
         always {
             script {
-                // Clean up Docker images to save space
                 if (isUnix()) {
                     sh "docker rmi ${DOCKER_IMAGE} || true"
                     sh "docker rmi ${DOCKER_REGISTRY}:latest || true"
