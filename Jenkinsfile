@@ -117,7 +117,7 @@ pipeline {
                     echo "Error during cleanup: ${e.getMessage()}"
                 } finally {
                     if (cleanupError) {
-                        error "Cleanup encountered errors, but pipeline completed."
+                        echo "Cleanup encountered errors, but pipeline completed."
                     }
                 }
             }
