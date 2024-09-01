@@ -19,7 +19,7 @@ pipeline {
         stage('Test') {
             steps {
                 script {
-                    // Convert Windows path to Unix-style path if on Windows
+                    // Function to convert Windows path to Unix-style path if on Windows
                     def convertPathToUnix = { path ->
                         if (!isUnix()) {
                             def driveLetter = path.substring(0, 1).toLowerCase()
@@ -75,17 +75,15 @@ pipeline {
     post {
         always {
             script {
-                // Clean up Docker images to save space
                 if (isUnix()) {
-                    // Unix/Linux clean up
+                    // For Unix/Linux systems
                     sh "docker rmi ${DOCKER_IMAGE} || true"
                     sh "docker rmi ${DOCKER_REGISTRY}:latest || true"
                 } else {
-                    // Windows clean up
-                    bat """
-                    docker rmi ${DOCKER_IMAGE} 2>nul || echo Image not found, skipping cleanup.
-                    docker rmi ${DOCKER_REGISTRY}:latest 2>nul || echo Image not found, skipping cleanup.
-                    """
+                    // For Windows systems
+                    // Using '|| echo Image not found' to prevent pipeline failure
+                    bat "docker rmi ${DOCKER_IMAGE} || echo Image not found"
+                    bat "docker rmi ${DOCKER_REGISTRY}:latest || echo Image not found"
                 }
             }
         }
