@@ -71,9 +71,9 @@ pipeline {
                     echo "Checking if container is running..."
                     def isRunning
                     if (isUnix()) {
-                        isRunning = sh(returnStatus: true, script: "docker ps | grep todo-app-deployment")
+                        isRunning = sh(returnStatus: true, script: "docker ps | grep todo-app-deployment || true")
                     } else {
-                        isRunning = bat(returnStatus: true, script: "docker ps | findstr todo-app-deployment")
+                        isRunning = bat(returnStatus: true, script: "docker ps | findstr todo-app-deployment || true")
                     }
 
                     if (isRunning != 0) {
@@ -89,6 +89,8 @@ pipeline {
     post {
         always {
             script {
+                echo "Performing cleanup..."
+
                 try {
                     if (isUnix()) {
                         sh '''
