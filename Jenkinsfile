@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    environment {
+        WORKSPACE = "${env.WORKSPACE}"
+    }
+
     stages {
         stage('Build') {
             steps {
@@ -12,7 +16,7 @@ pipeline {
         stage('Test') {
             steps {
                 script {
-                    dockerImage.inside {
+                    dockerImage.inside("-v ${WORKSPACE}:/app -w /app") {
                         sh 'python -m unittest discover'
                     }
                 }
@@ -21,8 +25,10 @@ pipeline {
         stage('Deploy') {
             steps {
                 script {
-                    dockerImage.push("ramangupta21/todo-app:latest")
-                    sh "docker run -d -p 5000:5000 ramangupta21/todo-app:latest"
+                    docker.withRegistry('', 'docker-hub-credentials') {
+                        dockerImage.push("ramanguptarg21/todo-app:latest")
+                        sh "docker run -d -p 5000:5000 ramanguptarg21/todo-app:latest"
+                    }
                 }
             }
         }
