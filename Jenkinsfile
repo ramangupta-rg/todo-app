@@ -33,13 +33,15 @@ pipeline {
 
                     echo "Converted Unix Workspace Path: ${unixWorkspace}"
 
+                    def testDir = unixWorkspace // You can specify a sub-directory if needed
+
                     if (isUnix()) {
                         sh """
-                        docker run --rm -v ${unixWorkspace}:/app -w /app ${DOCKER_IMAGE} python -m unittest discover
+                        docker run --rm -v ${testDir}:/app -w /app ${DOCKER_IMAGE} python -m unittest discover -s /app/tests
                         """
                     } else {
                         bat """
-                        docker run --rm -v ${unixWorkspace}:/app -w /app ${DOCKER_IMAGE} python -m unittest discover
+                        docker run --rm -v ${testDir}:/app -w /app ${DOCKER_IMAGE} python -m unittest discover -s /app/tests
                         """
                     }
                 }
@@ -97,7 +99,6 @@ pipeline {
                     sh "docker rmi ${DOCKER_IMAGE} || true"
                     sh "docker rmi ${DOCKER_REGISTRY}:latest || true"
                 } else {
-                    // Use a different approach to handle potential errors gracefully
                     bat """
                     docker rmi ${DOCKER_IMAGE} 2>nul || echo Image not found, skipping cleanup.
                     exit /b 0
