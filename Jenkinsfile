@@ -50,26 +50,42 @@ pipeline {
         }
 
         stage('Deploy') {
-    steps {
-        script {
-            // Push the Docker image to Docker Hub
-            docker.withRegistry('', '13bee838-94fb-4248-a117-3e3f07f246cc') {
-                dockerImage.push("latest")
-            }
+            steps {
+                script {
+                    // Stop and remove any existing container
+                    if (isUnix()) {
+                        sh "docker stop todo-app-deployment || true"
+                        sh "docker rm todo-app-deployment || true"
+                    } else {
+                        bat "docker stop todo-app-deployment 2>nul || echo No existing container to stop."
+                        bat "docker rm todo-app-deployment 2>nul || echo No existing container to remove."
+                    }
 
-            // Deploy the Docker container
-            if (isUnix()) {
-                sh """
-                docker run -d -p 5000:5000 --name todo-app-deployment ${DOCKER_REGISTRY}:latest
-                """
-            } else {
-                bat """
-                docker run -d -p 5000:5000 --name todo-app-deployment ${DOCKER_REGISTRY}:latest
-                """
+                    // Push the Docker image to Docker Hub
+                    docker.withRegistry('', '13bee838-94fb-4248-a117-3e3f07f246cc') {
+                        dockerImage.push("latest")
+                    }
+
+                    // Deploy the Docker container
+                    if (isUnix()) {
+                        sh """
+                        docker run -d -p 5000:5000 --name todo-app-deployment ${DOCKER_REGISTRY}:latest
+                        """
+                    } else {
+                        bat """
+                        docker run -d -p 5000:5000 --name todo-app-deployment ${DOCKER_REGISTRY}:latest
+                        """
+                    }
+
+                    // Verify that the container is running
+                    if (isUnix()) {
+                        sh "docker ps | grep todo-app-deployment"
+                    } else {
+                        bat "docker ps | findstr todo-app-deployment"
+                    }
+                }
             }
         }
-    }
-}
     }
 
     post {
@@ -77,11 +93,9 @@ pipeline {
             script {
                 // Clean up Docker images to save space
                 if (isUnix()) {
-                    // Unix/Linux clean up
                     sh "docker rmi ${DOCKER_IMAGE} || true"
                     sh "docker rmi ${DOCKER_REGISTRY}:latest || true"
                 } else {
-                    // Windows clean up
                     bat """
                     docker rmi ${DOCKER_IMAGE} 2>nul || echo Image not found, skipping cleanup.
                     docker rmi ${DOCKER_REGISTRY}:latest 2>nul || echo Image not found, skipping cleanup.
