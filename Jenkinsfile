@@ -97,9 +97,12 @@ pipeline {
                     sh "docker rmi ${DOCKER_IMAGE} || true"
                     sh "docker rmi ${DOCKER_REGISTRY}:latest || true"
                 } else {
+                    // Use a different approach to handle potential errors gracefully
                     bat """
                     docker rmi ${DOCKER_IMAGE} 2>nul || echo Image not found, skipping cleanup.
+                    exit /b 0
                     docker rmi ${DOCKER_REGISTRY}:latest 2>nul || echo Image not found, skipping cleanup.
+                    exit /b 0
                     """
                 }
             }
