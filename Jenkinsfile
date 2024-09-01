@@ -49,7 +49,6 @@ pipeline {
         stage('Deploy') {
             steps {
                 script {
-                    // Stop and remove the existing container if it exists
                     if (isUnix()) {
                         sh "docker stop todo-app-deployment || true"
                         sh "docker rm todo-app-deployment || true"
@@ -58,24 +57,17 @@ pipeline {
                         bat "docker rm todo-app-deployment 2>nul || echo No existing container to remove."
                     }
 
-                    // Push the Docker image to the registry
                     docker.withRegistry('', '13bee838-94fb-4248-a117-3e3f07f246cc') {
                         dockerImage.push("latest")
                     }
 
                     echo "Running container..."
-                    // Run the new container
                     if (isUnix()) {
-                        sh """
-                        docker run -d -p 5000:5000 --name todo-app-deployment ${DOCKER_REGISTRY}:latest
-                        """
+                        sh "docker run -d -p 5000:5000 --name todo-app-deployment ${DOCKER_REGISTRY}:latest"
                     } else {
-                        bat """
-                        docker run -d -p 5000:5000 --name todo-app-deployment ${DOCKER_REGISTRY}:latest
-                        """
+                        bat "docker run -d -p 5000:5000 --name todo-app-deployment ${DOCKER_REGISTRY}:latest"
                     }
 
-                    // Check if the container is running
                     echo "Checking if container is running..."
                     def isRunning
                     if (isUnix()) {
@@ -96,8 +88,8 @@ pipeline {
 
     post {
         always {
-            catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
-                script {
+            script {
+                try {
                     if (isUnix()) {
                         sh '''
                         docker rmi todo-app || true
@@ -109,6 +101,8 @@ pipeline {
                         docker rmi ramangupta21/todo-app:latest 2>nul || echo Image not found, skipping cleanup.
                         '''
                     }
+                } catch (Exception e) {
+                    echo "Error during cleanup: ${e.getMessage()}"
                 }
             }
         }
