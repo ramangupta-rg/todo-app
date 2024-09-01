@@ -49,6 +49,7 @@ pipeline {
         stage('Deploy') {
             steps {
                 script {
+                    // Stop and remove the existing container if it exists
                     if (isUnix()) {
                         sh "docker stop todo-app-deployment || true"
                         sh "docker rm todo-app-deployment || true"
@@ -57,11 +58,13 @@ pipeline {
                         bat "docker rm todo-app-deployment 2>nul || echo No existing container to remove."
                     }
 
+                    // Push the Docker image to the registry
                     docker.withRegistry('', '13bee838-94fb-4248-a117-3e3f07f246cc') {
                         dockerImage.push("latest")
                     }
 
                     echo "Running container..."
+                    // Run the new container
                     if (isUnix()) {
                         sh """
                         docker run -d -p 5000:5000 --name todo-app-deployment ${DOCKER_REGISTRY}:latest
@@ -72,6 +75,7 @@ pipeline {
                         """
                     }
 
+                    // Check if the container is running
                     echo "Checking if container is running..."
                     def isRunning
                     if (isUnix()) {
@@ -94,10 +98,11 @@ pipeline {
         always {
             script {
                 if (isUnix()) {
-                    sh "docker rmi ${DOCKER_IMAGE} || true"
-                    sh "docker rmi ${DOCKER_REGISTRY}:latest || true"
+                    sh """
+                    docker rmi ${DOCKER_IMAGE} || true
+                    docker rmi ${DOCKER_REGISTRY}:latest || true
+                    """
                 } else {
-                    // Use a different approach to handle potential errors gracefully
                     bat """
                     docker rmi ${DOCKER_IMAGE} 2>nul || echo Image not found, skipping cleanup.
                     docker rmi ${DOCKER_REGISTRY}:latest 2>nul || echo Image not found, skipping cleanup.
