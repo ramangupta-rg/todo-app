@@ -19,7 +19,7 @@ pipeline {
         stage('Test') {
             steps {
                 script {
-                    // Function to convert Windows path to Unix-style path if on Windows
+                    // Convert Windows path to Unix-style path if on Windows
                     def convertPathToUnix = { path ->
                         if (!isUnix()) {
                             def driveLetter = path.substring(0, 1).toLowerCase()
@@ -50,40 +50,42 @@ pipeline {
         }
 
         stage('Deploy') {
-            steps {
-                script {
-                    // Push the Docker image to Docker Hub
-                    docker.withRegistry('', 'docker-hub-credentials') {
-                        dockerImage.push("latest")
-                    }
+    steps {
+        script {
+            // Push the Docker image to Docker Hub
+            docker.withRegistry('', 'docker-hub-credentials') {
+                dockerImage.push("latest")
+            }
 
-                    // Deploy the Docker container
-                    if (isUnix()) {
-                        sh """
-                        docker run -d -p 5000:5000 ${DOCKER_REGISTRY}:latest
-                        """
-                    } else {
-                        bat """
-                        docker run -d -p 5000:5000 ${DOCKER_REGISTRY}:latest
-                        """
-                    }
-                }
+            // Deploy the Docker container
+            if (isUnix()) {
+                sh """
+                docker run -d -p 5000:5000 --name todo-app-deployment ${DOCKER_REGISTRY}:latest
+                """
+            } else {
+                bat """
+                docker run -d -p 5000:5000 --name todo-app-deployment ${DOCKER_REGISTRY}:latest
+                """
             }
         }
+    }
+}
     }
 
     post {
         always {
             script {
+                // Clean up Docker images to save space
                 if (isUnix()) {
-                    // For Unix/Linux systems
+                    // Unix/Linux clean up
                     sh "docker rmi ${DOCKER_IMAGE} || true"
                     sh "docker rmi ${DOCKER_REGISTRY}:latest || true"
                 } else {
-                    // For Windows systems
-                    // Using '|| echo Image not found' to prevent pipeline failure
-                    bat "docker rmi ${DOCKER_IMAGE} || echo Image not found"
-                    bat "docker rmi ${DOCKER_REGISTRY}:latest || echo Image not found"
+                    // Windows clean up
+                    bat """
+                    docker rmi ${DOCKER_IMAGE} 2>nul || echo Image not found, skipping cleanup.
+                    docker rmi ${DOCKER_REGISTRY}:latest 2>nul || echo Image not found, skipping cleanup.
+                    """
                 }
             }
         }
