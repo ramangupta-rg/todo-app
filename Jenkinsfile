@@ -93,15 +93,33 @@ pipeline {
 
                 try {
                     if (isUnix()) {
-                        sh '''
-                        docker rmi todo-app || true
-                        docker rmi ramangupta21/todo-app:latest || true
-                        '''
+                        def imageIds = sh(script: "docker images -q ${DOCKER_IMAGE} || true", returnStdout: true).trim()
+                        if (imageIds) {
+                            sh "docker rmi ${DOCKER_IMAGE} || true"
+                        } else {
+                            echo "Image ${DOCKER_IMAGE} not found, skipping cleanup."
+                        }
+
+                        def taggedImageIds = sh(script: "docker images -q ${DOCKER_REGISTRY}:latest || true", returnStdout: true).trim()
+                        if (taggedImageIds) {
+                            sh "docker rmi ${DOCKER_REGISTRY}:latest || true"
+                        } else {
+                            echo "Image ${DOCKER_REGISTRY}:latest not found, skipping cleanup."
+                        }
                     } else {
-                        bat '''
-                        docker rmi todo-app 2>nul || echo Image not found, skipping cleanup.
-                        docker rmi ramangupta21/todo-app:latest 2>nul || echo Image not found, skipping cleanup.
-                        '''
+                        def imageIds = bat(script: "docker images -q ${DOCKER_IMAGE} || echo not found", returnStdout: true).trim()
+                        if (imageIds != "not found") {
+                            bat "docker rmi ${DOCKER_IMAGE} 2>nul || echo Image ${DOCKER_IMAGE} not found, skipping cleanup."
+                        } else {
+                            echo "Image ${DOCKER_IMAGE} not found, skipping cleanup."
+                        }
+
+                        def taggedImageIds = bat(script: "docker images -q ${DOCKER_REGISTRY}:latest || echo not found", returnStdout: true).trim()
+                        if (taggedImageIds != "not found") {
+                            bat "docker rmi ${DOCKER_REGISTRY}:latest 2>nul || echo Image ${DOCKER_REGISTRY}:latest not found, skipping cleanup."
+                        } else {
+                            echo "Image ${DOCKER_REGISTRY}:latest not found, skipping cleanup."
+                        }
                     }
                 } catch (Exception e) {
                     echo "Error during cleanup: ${e.getMessage()}"
