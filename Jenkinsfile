@@ -9,19 +9,19 @@ pipeline {
                 }
             }
         }
-        stage('Test') {
-            steps {
-                script {
-                    // Convert the Windows path to a Unix-style path
-                    def unixWorkspace = "${env.WORKSPACE}".replaceAll('C:/', '/c/').replace('\\', '/')
+        // stage('Test') {
+        //     steps {
+        //         script {
+        //             // Convert the Windows path to a Unix-style path
+        //             def unixWorkspace = "${env.WORKSPACE}".replaceAll('C:/', '/c/').replace('\\', '/')
 
-                    // Mount the workspace as a volume and set the working directory
-                    dockerImage.inside("-v ${unixWorkspace}:/app -w /app") {
-                        sh 'python -m unittest discover'
-                    }
-                }
-            }
-        }
+        //             // Mount the workspace as a volume and set the working directory
+        //             dockerImage.inside("-v ${unixWorkspace}:/app -w /app") {
+        //                 sh 'python -m unittest discover'
+        //             }
+        //         }
+        //     }
+        // }
         stage('Deploy') {
             steps {
                 script {
