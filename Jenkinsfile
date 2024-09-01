@@ -1,36 +1,28 @@
 pipeline {
     agent any
-    environment {
-        DOCKER_IMAGE = "ramangupta21/todo-app"
-        DOCKER_TAG = "V1"
-        KUBECONFIG_CREDENTIALS_ID = 'your-kubeconfig-credentials-id'
-    }
+
     stages {
-        stage('Checkout') {
-            steps {
-                git 'https://github.com/ramangupta-rg/todo-app.git'
-            }
-        }
-        stage('Build Docker Image') {
+        stage('Build') {
             steps {
                 script {
-                    dockerImage = docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}")
+                    dockerImage = docker.build("todo-app")
                 }
             }
         }
-        stage('Push Docker Image') {
+        stage('Test') {
             steps {
                 script {
-                    docker.withRegistry('https://index.docker.io/v1/', 'dockerhub-credentials-id') {
-                        dockerImage.push()
+                    dockerImage.inside {
+                        sh 'python -m unittest discover'
                     }
                 }
             }
         }
-        stage('Deploy to Kubernetes') {
+        stage('Deploy') {
             steps {
-                withCredentials([file(credentialsId: "${KUBECONFIG_CREDENTIALS_ID}", variable: 'KUBECONFIG')]) {
-                    sh 'kubectl apply -f kubernetes/'
+                script {
+                    dockerImage.push("ramangupta21/todo-app:latest")
+                    sh "docker run -d -p 5000:5000 ramangupta21/todo-app:latest"
                 }
             }
         }
