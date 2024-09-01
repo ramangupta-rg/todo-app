@@ -92,33 +92,39 @@ pipeline {
                 echo "Performing cleanup..."
 
                 try {
-                    if (isUnix()) {
-                        def imageIds = sh(script: "docker images -q ${DOCKER_IMAGE} || true", returnStdout: true).trim()
+                    def isUnixSystem = isUnix()
+                    def dockerImageToRemove = 'todo-app'
+                    def dockerRegistryImageToRemove = 'ramangupta21/todo-app:latest'
+
+                    if (isUnixSystem) {
+                        // Check for and remove images if they exist
+                        def imageIds = sh(script: "docker images -q ${dockerImageToRemove} || true", returnStdout: true).trim()
                         if (imageIds) {
-                            sh "docker rmi ${DOCKER_IMAGE} || true"
+                            sh "docker rmi ${dockerImageToRemove} || true"
                         } else {
-                            echo "Image ${DOCKER_IMAGE} not found, skipping cleanup."
+                            echo "Image ${dockerImageToRemove} not found, skipping cleanup."
                         }
 
-                        def taggedImageIds = sh(script: "docker images -q ${DOCKER_REGISTRY}:latest || true", returnStdout: true).trim()
+                        def taggedImageIds = sh(script: "docker images -q ${dockerRegistryImageToRemove} || true", returnStdout: true).trim()
                         if (taggedImageIds) {
-                            sh "docker rmi ${DOCKER_REGISTRY}:latest || true"
+                            sh "docker rmi ${dockerRegistryImageToRemove} || true"
                         } else {
-                            echo "Image ${DOCKER_REGISTRY}:latest not found, skipping cleanup."
+                            echo "Image ${dockerRegistryImageToRemove} not found, skipping cleanup."
                         }
                     } else {
-                        def imageIds = bat(script: "docker images -q ${DOCKER_IMAGE} || echo not found", returnStdout: true).trim()
+                        // Check for and remove images if they exist
+                        def imageIds = bat(script: "docker images -q ${dockerImageToRemove} || echo not found", returnStdout: true).trim()
                         if (imageIds != "not found") {
-                            bat "docker rmi ${DOCKER_IMAGE} 2>nul || echo Image ${DOCKER_IMAGE} not found, skipping cleanup."
+                            bat "docker rmi ${dockerImageToRemove} 2>nul || echo Image ${dockerImageToRemove} not found, skipping cleanup."
                         } else {
-                            echo "Image ${DOCKER_IMAGE} not found, skipping cleanup."
+                            echo "Image ${dockerImageToRemove} not found, skipping cleanup."
                         }
 
-                        def taggedImageIds = bat(script: "docker images -q ${DOCKER_REGISTRY}:latest || echo not found", returnStdout: true).trim()
+                        def taggedImageIds = bat(script: "docker images -q ${dockerRegistryImageToRemove} || echo not found", returnStdout: true).trim()
                         if (taggedImageIds != "not found") {
-                            bat "docker rmi ${DOCKER_REGISTRY}:latest 2>nul || echo Image ${DOCKER_REGISTRY}:latest not found, skipping cleanup."
+                            bat "docker rmi ${dockerRegistryImageToRemove} 2>nul || echo Image ${dockerRegistryImageToRemove} not found, skipping cleanup."
                         } else {
-                            echo "Image ${DOCKER_REGISTRY}:latest not found, skipping cleanup."
+                            echo "Image ${dockerRegistryImageToRemove} not found, skipping cleanup."
                         }
                     }
                 } catch (Exception e) {
