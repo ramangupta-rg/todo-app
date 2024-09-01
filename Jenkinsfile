@@ -53,7 +53,7 @@ pipeline {
     steps {
         script {
             // Push the Docker image to Docker Hub
-            docker.withRegistry('', 'docker-hub-credentials') {
+            docker.withRegistry('', '13bee838-94fb-4248-a117-3e3f07f246cc') {
                 dockerImage.push("latest")
             }
 
