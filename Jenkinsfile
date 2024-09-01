@@ -97,6 +97,7 @@ pipeline {
     post {
         always {
             script {
+                def cleanupError = false
                 try {
                     if (isUnix()) {
                         sh """
@@ -111,6 +112,10 @@ pipeline {
                     }
                 } catch (Exception e) {
                     echo "Error during cleanup: ${e.getMessage()}"
+                    cleanupError = true
+                }
+
+                if (cleanupError) {
                     currentBuild.result = 'SUCCESS'
                 }
             }
