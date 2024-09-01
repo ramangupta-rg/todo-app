@@ -97,20 +97,28 @@ pipeline {
     post {
         always {
             script {
+                def cleanupError = false
                 try {
                     if (isUnix()) {
-                        sh """
-                        docker rmi ${DOCKER_IMAGE} || true
-                        docker rmi ${DOCKER_REGISTRY}:latest || true
-                        """
+                        def rmiResult1 = sh(returnStatus: true, script: "docker rmi ${DOCKER_IMAGE} || true")
+                        def rmiResult2 = sh(returnStatus: true, script: "docker rmi ${DOCKER_REGISTRY}:latest || true")
+                        if (rmiResult1 != 0 || rmiResult2 != 0) {
+                            echo "One or more Docker images could not be removed."
+                        }
                     } else {
-                        bat """
-                        docker rmi ${DOCKER_IMAGE} 2>nul || echo Image not found, skipping cleanup.
-                        docker rmi ${DOCKER_REGISTRY}:latest 2>nul || echo Image not found, skipping cleanup.
-                        """
+                        def rmiResult1 = bat(returnStatus: true, script: "docker rmi ${DOCKER_IMAGE} 2>nul || echo Image not found, skipping cleanup.")
+                        def rmiResult2 = bat(returnStatus: true, script: "docker rmi ${DOCKER_REGISTRY}:latest 2>nul || echo Image not found, skipping cleanup.")
+                        if (rmiResult1 != 0 || rmiResult2 != 0) {
+                            echo "One or more Docker images could not be removed."
+                        }
                     }
                 } catch (Exception e) {
+                    cleanupError = true
                     echo "Error during cleanup: ${e.getMessage()}"
+                } finally {
+                    if (cleanupError) {
+                        error "Cleanup encountered errors, but pipeline completed."
+                    }
                 }
             }
         }
