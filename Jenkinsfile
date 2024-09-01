@@ -19,16 +19,15 @@ pipeline {
         stage('Test') {
             steps {
                 script {
-                    // Function to convert Windows path to Unix-style path
+                    // Convert Windows path to Unix-style path if on Windows
                     def convertPathToUnix = { path ->
-                        // Extract drive letter and convert to lowercase
-                        def driveLetter = path.substring(0,1).toLowerCase()
-                        // Remove drive letter and colon
-                        def withoutDrive = path.substring(2)
-                        // Replace backslashes with forward slashes
-                        def unixPath = withoutDrive.replace('\\', '/')
-                        // Prepend with /c or appropriate drive letter
-                        return "/${driveLetter}${unixPath}"
+                        if (!isUnix()) {
+                            def driveLetter = path.substring(0, 1).toLowerCase()
+                            def withoutDrive = path.substring(2)
+                            def unixPath = withoutDrive.replace('\\', '/')
+                            return "/${driveLetter}${unixPath}"
+                        }
+                        return path
                     }
 
                     def workspace = env.WORKSPACE
@@ -37,9 +36,15 @@ pipeline {
                     echo "Converted Unix Workspace Path: ${unixWorkspace}"
 
                     // Run tests using Docker directly
-                    sh """
-                    docker run --rm -v ${unixWorkspace}:/app -w /app ${DOCKER_IMAGE} python -m unittest discover
-                    """
+                    if (isUnix()) {
+                        sh """
+                        docker run --rm -v ${unixWorkspace}:/app -w /app ${DOCKER_IMAGE} python -m unittest discover
+                        """
+                    } else {
+                        bat """
+                        docker run --rm -v ${unixWorkspace}:/app -w /app ${DOCKER_IMAGE} python -m unittest discover
+                        """
+                    }
                 }
             }
         }
@@ -53,9 +58,15 @@ pipeline {
                     }
 
                     // Deploy the Docker container
-                    sh """
-                    docker run -d -p 5000:5000 ${DOCKER_REGISTRY}:latest
-                    """
+                    if (isUnix()) {
+                        sh """
+                        docker run -d -p 5000:5000 ${DOCKER_REGISTRY}:latest
+                        """
+                    } else {
+                        bat """
+                        docker run -d -p 5000:5000 ${DOCKER_REGISTRY}:latest
+                        """
+                    }
                 }
             }
         }
@@ -65,8 +76,13 @@ pipeline {
         always {
             script {
                 // Clean up Docker images to save space
-                sh "docker rmi ${DOCKER_IMAGE} || true"
-                sh "docker rmi ${DOCKER_REGISTRY}:latest || true"
+                if (isUnix()) {
+                    sh "docker rmi ${DOCKER_IMAGE} || true"
+                    sh "docker rmi ${DOCKER_REGISTRY}:latest || true"
+                } else {
+                    bat "docker rmi ${DOCKER_IMAGE} || true"
+                    bat "docker rmi ${DOCKER_REGISTRY}:latest || true"
+                }
             }
         }
     }
