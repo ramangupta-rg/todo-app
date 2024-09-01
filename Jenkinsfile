@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_IMAGE = 'todo-app'   // Define your Docker image name
+        DOCKER_IMAGE = 'todo-app'   // Docker image name
         DOCKER_REGISTRY = 'ramangupta21/todo-app' // Replace with your Docker Hub username and image name
     }
 
@@ -10,6 +10,7 @@ pipeline {
         stage('Build') {
             steps {
                 script {
+                    // Build the Docker image
                     dockerImage = docker.build(DOCKER_IMAGE)
                 }
             }
@@ -18,13 +19,27 @@ pipeline {
         stage('Test') {
             steps {
                 script {
-                    // Convert the Windows path to Unix-style path for Docker
-                    def unixWorkspace = "${env.WORKSPACE}".replaceAll('C:/', '/c/').replace('\\', '/')
-
-                    // Run tests inside the Docker container
-                    dockerImage.inside("-v ${unixWorkspace}:/app -w /app") {
-                        sh 'python -m unittest discover'
+                    // Function to convert Windows path to Unix-style path
+                    def convertPathToUnix = { path ->
+                        // Extract drive letter and convert to lowercase
+                        def driveLetter = path.substring(0,1).toLowerCase()
+                        // Remove drive letter and colon
+                        def withoutDrive = path.substring(2)
+                        // Replace backslashes with forward slashes
+                        def unixPath = withoutDrive.replace('\\', '/')
+                        // Prepend with /c or appropriate drive letter
+                        return "/${driveLetter}${unixPath}"
                     }
+
+                    def workspace = env.WORKSPACE
+                    def unixWorkspace = convertPathToUnix(workspace)
+
+                    echo "Converted Unix Workspace Path: ${unixWorkspace}"
+
+                    // Run tests using Docker directly
+                    sh """
+                    docker run --rm -v ${unixWorkspace}:/app -w /app ${DOCKER_IMAGE} python -m unittest discover
+                    """
                 }
             }
         }
@@ -32,15 +47,15 @@ pipeline {
         stage('Deploy') {
             steps {
                 script {
+                    // Push the Docker image to Docker Hub
                     docker.withRegistry('', 'docker-hub-credentials') {
-                        // Push the Docker image to the registry
                         dockerImage.push("latest")
-
-                        // Run the Docker container in detached mode
-                        sh """
-                        docker run -d -p 5000:5000 ${DOCKER_REGISTRY}:latest
-                        """
                     }
+
+                    // Deploy the Docker container
+                    sh """
+                    docker run -d -p 5000:5000 ${DOCKER_REGISTRY}:latest
+                    """
                 }
             }
         }
