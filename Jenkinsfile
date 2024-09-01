@@ -77,11 +77,15 @@ pipeline {
             script {
                 // Clean up Docker images to save space
                 if (isUnix()) {
+                    // Unix/Linux clean up
                     sh "docker rmi ${DOCKER_IMAGE} || true"
                     sh "docker rmi ${DOCKER_REGISTRY}:latest || true"
                 } else {
-                    bat "docker rmi ${DOCKER_IMAGE} || true"
-                    bat "docker rmi ${DOCKER_REGISTRY}:latest || true"
+                    // Windows clean up
+                    bat """
+                    docker rmi ${DOCKER_IMAGE} 2>nul || echo Image not found, skipping cleanup.
+                    docker rmi ${DOCKER_REGISTRY}:latest 2>nul || echo Image not found, skipping cleanup.
+                    """
                 }
             }
         }
